@@ -1,0 +1,61 @@
+name: CI/CD Backend - Nuxt & Colyseus
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout du code source
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Configuration de PNPM
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      # 3. Configuration de Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      # 4. Installation des dépendances du monorepo
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 5. Préparation de Nuxt (génération des fichiers et types requis dans .nuxt)
+      - name: Prepare Nuxt types
+        run: pnpm --filter @president/back exec nuxt prepare
+
+      # 6. Étape 1 : Build de l'ensemble du monorepo (shared, back et game-server)
+      - name: Build Projects
+        run: pnpm build
+
+      # 7. Étape 2 : Tests unitaires automatisés
+      - name: Run Tests
+        run: pnpm test
+
+      # 8. Étape 3 : Audit de sécurité des dépendances
+      - name: Run Security Audit
+        run: pnpm audit --audit-level=high || echo "Audit completed with some warnings"
+
+      # 9. Étape 4 : Déploiement automatique sur Render
+      # Cette étape ne s'exécute que sur push sur main/master, pas sur les Pull Requests
+      - name: Trigger Deployments on Render
+        if: github.event_name == 'push'
+        run: |
+          echo "Triggering API deploy..."
+          curl -f -X POST "${{ secrets.RENDER_API_DEPLOY_HOOK }}"
+          echo "Triggering Game Server deploy..."
+          curl -f -X POST "${{ secrets.RENDER_GAME_SERVER_DEPLOY_HOOK }}"

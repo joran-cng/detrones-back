@@ -16,7 +16,7 @@ model User {
   username    String   @unique
   password    String
   mmr         Int      @default(1000)
-  winsCount   Int      @default(0)
+  wins        Int      @default(0)
   avatarUrl   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -26,18 +26,13 @@ model User {
   // Friend relationships
   friends     Friend[] @relation("UserFriends")
   friendOf    Friend[] @relation("FriendUsers")
-
-  // Messages
-  sentMessages     Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 model Friend {
-  id        String       @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   friendId  String
-  status    FriendStatus @default(PENDING)
-  createdAt DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   user      User     @relation("UserFriends", fields: [userId], references: [id])
   friend    User     @relation("FriendUsers", fields: [friendId], references: [id])
@@ -45,26 +40,6 @@ model Friend {
   @@unique([userId, friendId])
   @@index([userId])
   @@index([friendId])
-}
-
-enum FriendStatus {
-  PENDING
-  ACCEPTED
-}
-
-model Message {
-  id         String   @id @default(cuid())
-  senderId   String
-  receiverId String
-  content    String
-  read       Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
-
-  @@index([senderId, receiverId])
-  @@index([receiverId, senderId])
 }
 
 model Match {

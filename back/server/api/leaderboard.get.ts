@@ -1,65 +1,45 @@
 import prisma from '../utils/prisma'
+import { getUserFromEvent } from '../utils/auth'
 
 export default defineEventHandler(async (event) => {
     const query = getQuery(event)
-    const filter = query.filter as string | undefined
+    const filter = query.filter as string
 
-    // If filter=friends, only return friends of the authenticated user
-    if (filter === 'friends') {
-        let userId: string | null = null
-        try {
-            const user = getUserFromEvent(event)
-            userId = user.userId
-        } catch {
-            // Not authenticated, return empty list
-            return []
+    let userId: string | null = null
+    try {
+        const decoded = getUserFromEvent(event)
+        userId = decoded.userId
+    } catch (e) {
+        if (filter === 'friends') {
+            throw createError({
+                statusCode: 401,
+                statusMessage: 'Authentication required for friends filter',
+            })
         }
-
-        const friends = await prisma.friend.findMany({
-            where: { userId },
-            include: {
-                friend: {
-                    select: {
-                        id: true,
-                        username: true,
-                        mmr: true,
-                        winsCount: true,
-                        avatarUrl: true,
-                    }
-                }
-            }
-        })
-
-        // Also include the user themselves
-        const me = await prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                username: true,
-                mmr: true,
-                winsCount: true,
-                avatarUrl: true,
-            }
-        })
-
-        const allUsers = [
-            ...friends.map(f => f.friend),
-            ...(me ? [me] : [])
-        ]
-
-        // Sort by MMR descending
-        allUsers.sort((a, b) => b.mmr - a.mmr)
-
-        return allUsers
     }
 
-    // Default: global leaderboard
+    let whereClause = {}
+
+    if (filter === 'friends' && userId) {
+        const friendsList = await prisma.friend.findMany({
+            where: { userId },
+            select: { friendId: true }
+        })
+        const friendIds = friendsList.map(f => f.friendId)
+        friendIds.push(userId)
+
+        whereClause = {
+            id: { in: friendIds }
+        }
+    }
+
     const users = await prisma.user.findMany({
+        where: whereClause,
         select: {
             id: true,
             username: true,
             mmr: true,
-            winsCount: true,
+            wins: true,
             avatarUrl: true,
         },
         orderBy: {

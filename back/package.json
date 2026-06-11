@@ -5,7 +5,8 @@
         "build": "nuxt build",
         "dev": "nuxt dev",
         "generate": "nuxt generate",
-        "preview": "nuxt preview"
+        "preview": "nuxt preview",
+        "test": "vitest run"
     },
     "dependencies": {
         "@president/shared": "workspace:*",
@@ -18,9 +19,12 @@
         "zod": "^3.0.0"
     },
     "devDependencies": {
+        "@nuxt/test-utils": "^4.0.3",
         "@president/config": "workspace:*",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^20.19.25",
-        "prisma": "^5.22.0"
+        "happy-dom": "^20.10.2",
+        "prisma": "^5.22.0",
+        "vitest": "^4.1.8"
     }
 }
