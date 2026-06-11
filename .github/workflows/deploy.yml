@@ -50,7 +50,14 @@ jobs:
       - name: Run Security Audit
         run: pnpm audit --audit-level=high || echo "Audit completed with some warnings"
 
-      # 9. Étape 4 : Déploiement automatique sur Render
+      # 9. Initialisation et mise à jour automatique de la base de données
+      - name: Deploy Database Schema (Prisma)
+        if: github.event_name == 'push'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter @president/back exec prisma db push
+
+      # 10. Étape 4 : Déploiement automatique sur Render
       # Cette étape ne s'exécute que sur push sur main/master, pas sur les Pull Requests
       - name: Trigger Deployments on Render
         if: github.event_name == 'push'
