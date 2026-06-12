@@ -43,6 +43,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // TODO: Move secret to env
+    // TEST
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'secret', {
         expiresIn: '7d',
     })
