@@ -1,4 +1,4 @@
-# Projet Président Online - Backend & Serveur de Jeu test
+# Projet Président Online - Backend & Serveur de Jeu
 
 Ce dépôt contient le backend complet du jeu "Président Online". Il est composé d'une API REST (Nuxt 3 / Prisma) et d'un serveur de jeu temps réel (Colyseus + Express).
 
