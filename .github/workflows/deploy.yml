@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - master
   pull_request:
     branches:
       - main
-      - master
 
 jobs:
   build-test-deploy:
@@ -58,7 +56,7 @@ jobs:
         run: pnpm --filter @president/back exec prisma db push
 
       # 10. Étape 4 : Déploiement automatique sur Render
-      # Cette étape ne s'exécute que sur push sur main/master, pas sur les Pull Requests
+      # Cette étape ne s'exécute que sur push sur main, pas sur les Pull Requests
       - name: Trigger Deployments on Render
         if: github.event_name == 'push'
         run: |
