@@ -1,5 +1,7 @@
 name: CI/CD Backend - Nuxt & Colyseus
 
+# Déclencheurs : Push ou PR sur main (sauf modifs de doc Markdown)
+# Note : GitHub Actions supporte nativement le saut de CI en incluant [skip ci] ou [ci skip] dans le message de commit.
 on:
   push:
     branches:
