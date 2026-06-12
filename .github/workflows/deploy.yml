@@ -13,56 +13,102 @@ on:
       - '**.md'
 
 jobs:
-  build-test-deploy:
+  # 1. Job de compilation du monorépo (Nuxt types generation + build)
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Checkout du code source
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Configuration de PNPM
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
 
-      # 3. Configuration de Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
-      # 4. Installation des dépendances du monorepo
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # 5. Préparation de Nuxt (génération des fichiers et types requis dans .nuxt)
       - name: Prepare Nuxt types
         run: pnpm --filter @president/back exec nuxt prepare
 
-      # 6. Étape 1 : Build de l'ensemble du monorepo (shared, back et game-server)
       - name: Build Projects
         run: pnpm build
 
-      # 7. Étape 2 : Tests unitaires automatisés
+  # 2. Job des tests unitaires exécuté en parallèle
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Run Tests
         run: pnpm test
 
-      # 8. Étape 3 : Audit de sécurité des dépendances
+  # 3. Job d'audit de sécurité des dépendances exécuté en parallèle
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Run Security Audit
         run: pnpm audit --audit-level=high || echo "Audit completed with some warnings"
 
-      # 9. Initialisation et mise à jour automatique de la base de données
+  # 4. Job de migration et déploiement (dépend de la compilation, des tests et de l'audit)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build, unit-tests, security-audit]
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Deploy Database Schema (Prisma)
-        if: github.event_name == 'push'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm --filter @president/back exec prisma db push
 
-      # 10. Étape 4 : Déploiement automatique sur Render
-      # Cette étape ne s'exécute que sur push sur main, pas sur les Pull Requests
       - name: Trigger Deployments on Render
-        if: github.event_name == 'push'
         run: |
           echo "Triggering API deploy..."
           curl -f -X POST "${{ secrets.RENDER_API_DEPLOY_HOOK }}"
