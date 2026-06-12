@@ -137,30 +137,30 @@ Pour un déploiement encore plus adapté aux standards de l'industrie, une *Helm
 
 Le dépôt intègre une chaîne d'intégration et de déploiement continu complète via **GitHub Actions**.
 
-### Schéma de l'Architecture CI/CD
+### Schéma de l'Architecture CI/CD (Architecture DAG)
 
 ```mermaid
 graph TD
-    Developer[Développeur] -->|git push branch| GitHub{GitHub Repository}
-    GitHub -->|Déclenche la CI/CD| Actions[GitHub Actions Runner]
+    Developer[Développeur] -->|git push| GitHub{GitHub}
     
-    subgraph CI : Intégration Continue
-        Actions -->|1. Setup| Env[Node.js v20 & PNPM Cache]
-        Env -->|2. Install| Deps[pnpm install --frozen-lockfile]
-        Deps -->|3. Typegen| Nuxt[nuxt prepare]
-        Nuxt -->|4. Compile| Build[pnpm build Monorepo]
-        Build -->|5. Test| Tests[pnpm test Vitest]
-        Tests -->|6. Sécurité| Audit[pnpm audit CVEs]
+    subgraph Jobs de Validation (Parallèles)
+        GitHub -->|Job 1| Build[Build Monorepo]
+        GitHub -->|Job 2| Tests[Unit Tests Vitest]
+        GitHub -->|Job 3| Audit[Security Audit]
     end
     
-    subgraph CD : Déploiement Continu
-        Audit -->|7. Condition: Push sur main| DB[Prisma DB Push]
-        DB -->|Migration PostgreSQL| Postgres[(Render PostgreSQL)]
-        DB -->|8. Webhooks Render| Webhook[Deploy Webhooks]
-        Webhook -->|Pull latest code| RenderAPI[API REST Nuxt 3]
-        Webhook -->|Pull latest code| RenderGame[Game Server Colyseus]
-    end
+    Build -->|needs: build, unit-tests, security-audit, Condition: Push sur main| Deploy[Job 4: Migrate & Deploy]
+    Tests --> Deploy
+    Audit --> Deploy
 ```
+
+### Fonctionnement du Pipeline (`.github/workflows/deploy.yml`)
+
+Le pipeline est structuré en **4 jobs distincts** :
+*   **Validation Parallèle** : À chaque Push ou Pull Request sur `main`, les jobs de validation (Build global, Tests unitaires et Audit de sécurité) démarrent en parallèle sur 3 runners différents.
+*   **Déploiement Continu (CD)** : Lors d'un push ou d'une fusion sur la branche principale `main` (uniquement après le succès complet de la validation parallèle) :
+    1. Le job de déploiement synchronise le schéma de la base de données PostgreSQL de production à l'aide de `prisma db push`.
+    2. Il appelle par requête POST sécurisée les Webhooks de Render pour déclencher la mise en production à chaud de l'API REST Nuxt et du serveur de jeu Colyseus.
 
 ### Comment Cloner le Projet Backend
 ```bash
@@ -173,12 +173,6 @@ Les tests unitaires vérifient les routes REST (comme `/api/health`) et la valid
 ```bash
 pnpm test
 ```
-
-### Fonctionnement du Pipeline (`.github/workflows/deploy.yml`)
-*   **Intégration Continue (CI)** : À chaque modification poussée ou dans une Pull Request vers `main`, GitHub Actions installe les dépendances avec cache (pnpm), compile l'application globale, lance les tests unitaires et vérifie la sécurité des dépendances (`pnpm audit`).
-*   **Déploiement Continu (CD)** : Lors d'un push direct sur la branche `main` :
-    1. Le pipeline met à jour le schéma de la base de données PostgreSQL de production à l'aide de `prisma db push`.
-    2. Le pipeline notifie Render via des Webhooks HTTP POST sécurisés pour recompiler et redémarrer à chaud les services d'API REST et le serveur de jeu Colyseus.
 
 ### Comment suivre les exécutions et les logs
 1. Rendez-vous sur votre dépôt GitHub.
