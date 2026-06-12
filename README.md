@@ -130,3 +130,59 @@ Pour un déploiement encore plus adapté aux standards de l'industrie, une *Helm
    ```bash
    helm uninstall president-stack
    ```
+
+---
+
+## 🔄 4. Pipeline CI/CD et Déploiement Continu
+
+Le dépôt intègre une chaîne d'intégration et de déploiement continu complète via **GitHub Actions**.
+
+### Schéma de l'Architecture CI/CD
+
+```mermaid
+graph TD
+    Developer[Développeur] -->|git push branch| GitHub{GitHub Repository}
+    GitHub -->|Déclenche la CI/CD| Actions[GitHub Actions Runner]
+    
+    subgraph CI : Intégration Continue
+        Actions -->|1. Setup| Env[Node.js v20 & PNPM Cache]
+        Env -->|2. Install| Deps[pnpm install --frozen-lockfile]
+        Deps -->|3. Typegen| Nuxt[nuxt prepare]
+        Nuxt -->|4. Compile| Build[pnpm build Monorepo]
+        Build -->|5. Test| Tests[pnpm test Vitest]
+        Tests -->|6. Sécurité| Audit[pnpm audit CVEs]
+    end
+    
+    subgraph CD : Déploiement Continu
+        Audit -->|7. Condition: Push sur main| DB[Prisma DB Push]
+        DB -->|Migration PostgreSQL| Postgres[(Render PostgreSQL)]
+        DB -->|8. Webhooks Render| Webhook[Deploy Webhooks]
+        Webhook -->|Pull latest code| RenderAPI[API REST Nuxt 3]
+        Webhook -->|Pull latest code| RenderGame[Game Server Colyseus]
+    end
+```
+
+### Comment Cloner le Projet Backend
+```bash
+git clone git@github.com:joran-cng/detrones-back.git
+cd detrones-back
+```
+
+### Comment Exécuter les Tests Unitaires Localement
+Les tests unitaires vérifient les routes REST (comme `/api/health`) et la validation de sécurité des jetons de connexion (JWT). Ils s'exécutent avec **Vitest** :
+```bash
+pnpm test
+```
+
+### Fonctionnement du Pipeline (`.github/workflows/deploy.yml`)
+*   **Intégration Continue (CI)** : À chaque modification poussée ou dans une Pull Request vers `main`, GitHub Actions installe les dépendances avec cache (pnpm), compile l'application globale, lance les tests unitaires et vérifie la sécurité des dépendances (`pnpm audit`).
+*   **Déploiement Continu (CD)** : Lors d'un push direct sur la branche `main` :
+    1. Le pipeline met à jour le schéma de la base de données PostgreSQL de production à l'aide de `prisma db push`.
+    2. Le pipeline notifie Render via des Webhooks HTTP POST sécurisés pour recompiler et redémarrer à chaud les services d'API REST et le serveur de jeu Colyseus.
+
+### Comment suivre les exécutions et les logs
+1. Rendez-vous sur votre dépôt GitHub.
+2. Cliquez sur l'onglet **Actions**.
+3. Dans la colonne de gauche, sélectionnez **CI/CD Backend - Nuxt & Colyseus**.
+4. Cliquez sur le run de votre choix pour voir les logs d'exécution en temps réel de chaque étape.
+
