@@ -147,17 +147,19 @@ graph TD
         GitHub -->|Job 1| Build[Build Monorepo]
         GitHub -->|Job 2| Tests[Unit Tests Vitest]
         GitHub -->|Job 3| Audit[Security Audit]
+        GitHub -->|Job 4| Helm[Helm Lint Validation]
     end
     
-    Build -->|needs: build, unit-tests, security-audit, Condition: Push sur main| Deploy[Job 4: Migrate & Deploy]
+    Build -->|needs: build, unit-tests, security-audit, helm-validation, Condition: Push sur main| Deploy[Job 5: Migrate & Deploy]
     Tests --> Deploy
     Audit --> Deploy
+    Helm --> Deploy
 ```
 
 ### Fonctionnement du Pipeline (`.github/workflows/deploy.yml`)
 
-Le pipeline est structuré en **4 jobs distincts** :
-*   **Validation Parallèle** : À chaque Push ou Pull Request sur `main`, les jobs de validation (Build global, Tests unitaires et Audit de sécurité) démarrent en parallèle sur 3 runners différents.
+Le pipeline est structuré en **5 jobs distincts** (4 de validation et 1 de déploiement) :
+*   **Validation Parallèle** : À chaque Push ou Pull Request sur `main`, les jobs de validation (Build global, Tests unitaires, Audit de sécurité et validation syntaxique Helm/Kubernetes) démarrent en parallèle sur 4 runners différents pour un feedback immédiat.
 *   **Déploiement Continu (CD)** : Lors d'un push ou d'une fusion sur la branche principale `main` (uniquement après le succès complet de la validation parallèle) :
     1. Le job de déploiement synchronise le schéma de la base de données PostgreSQL de production à l'aide de `prisma db push`.
     2. Il appelle par requête POST sécurisée les Webhooks de Render pour déclencher la mise en production à chaud de l'API REST Nuxt et du serveur de jeu Colyseus.

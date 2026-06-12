@@ -85,10 +85,20 @@ jobs:
       - name: Run Security Audit
         run: pnpm audit --audit-level=high || echo "Audit completed with some warnings"
 
-  # 4. Job de migration et déploiement (dépend de la compilation, des tests et de l'audit)
+  # 3.5. Job de validation de la charte Helm (Kubernetes IaC) exécuté en parallèle
+  helm-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Helm Chart
+        run: helm lint ./chart/president
+
+  # 4. Job de migration et déploiement (dépend de la compilation, des tests, de la sécurité et de Helm)
   deploy:
     runs-on: ubuntu-latest
-    needs: [build, unit-tests, security-audit]
+    needs: [build, unit-tests, security-audit, helm-validation]
     if: github.event_name == 'push'
     steps:
       - name: Checkout Code
