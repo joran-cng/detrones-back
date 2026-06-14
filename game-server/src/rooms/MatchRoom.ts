@@ -109,6 +109,7 @@ export class MatchRoom extends Room<GameState> {
                 connected: p.connected,
                 role: p.role,
                 handCount: hand.length,
+                score: p.score,
             });
         });
 
@@ -868,11 +869,26 @@ export class MatchRoom extends Room<GameState> {
         ranking.forEach((sessionId, index) => {
             const player = this.state.players.get(sessionId);
             if (!player) return;
-            if (index === 0) player.role = "PRESIDENT";
-            else if (index === playerCount - 1) player.role = "TDC";
-            else if (index === 1 && playerCount >= 4) player.role = "VICE_PRESIDENT";
-            else if (index === playerCount - 2 && playerCount >= 4) player.role = "VICE_TDC";
-            else player.role = "NEUTRE";
+            
+            let role = "NEUTRE";
+            let delta = 0;
+
+            if (index === 0) {
+                role = "PRESIDENT";
+                delta = 30;
+            } else if (index === playerCount - 1) {
+                role = "TDC";
+                delta = -30;
+            } else if (index === 1 && playerCount >= 4) {
+                role = "VICE_PRESIDENT";
+                delta = 15;
+            } else if (index === playerCount - 2 && playerCount >= 4) {
+                role = "VICE_TDC";
+                delta = -15;
+            }
+
+            player.role = role;
+            player.score = (player.score || 0) + delta;
         });
 
         let summary = "🏆 **Classement de la manche** 🏆\n";
@@ -880,7 +896,7 @@ export class MatchRoom extends Room<GameState> {
             const p = this.state.players.get(sessionId);
             if (p) {
                 const icon = p.role === "PRESIDENT" ? "👑" : p.role === "TDC" ? "💩" : "👤";
-                summary += `${index + 1}. ${p.username} - ${p.role} ${icon}\n`;
+                summary += `${index + 1}. ${p.username} - ${p.role} ${icon} (${p.score} pts)\n`;
             }
         });
 
@@ -896,7 +912,7 @@ export class MatchRoom extends Room<GameState> {
             role: p.role
         }));
 
-        const backUrl = process.env.BACK_URL || "http://back:3000";
+        const backUrl = process.env.BACK_URL || "http://localhost:3000";
         fetch(`${backUrl}/api/match/end`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -983,6 +999,7 @@ export class MatchRoom extends Room<GameState> {
             const newPlayer = new Player(client.sessionId, username);
             newPlayer.role = oldPlayer.role;
             newPlayer.avatarUrl = options.avatarUrl || oldPlayer.avatarUrl || "";
+            newPlayer.score = oldPlayer.score || 0;
             
             this.state.players.delete(existingSessionId);
             this.state.players.set(client.sessionId, newPlayer);

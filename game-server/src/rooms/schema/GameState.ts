@@ -29,6 +29,7 @@ export class Player extends Schema {
     @type("number") handCount: number = 0;
     @type([Card]) hand = new ArraySchema<Card>();
     @type("boolean") isSpectator: boolean = false;
+    @type("number") score: number = 0;
 
     constructor(id: string, username: string) {
         super();

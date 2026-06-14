@@ -32,6 +32,7 @@ model Friend {
   id        String   @id @default(cuid())
   userId    String
   friendId  String
+  status    String   @default("PENDING")
   createdAt DateTime @default(now())
 
   user      User     @relation("UserFriends", fields: [userId], references: [id])
