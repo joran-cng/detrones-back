@@ -247,19 +247,35 @@ export class MatchRoom extends Room<GameState> {
 
             // ── Special 2: burns the trick ──
             if (playedCards.every(c => c.rank === "2")) {
-                this.plainTrick = [];
-                this.state.currentTrickType = "";
-                this.state.activeConsecutiveCards = 0;
-                this.state.isForcedRank = "";
-                this.consecutivePasses = 0;
+                // Show the card(s) on the table before clearing the trick
+                this.plainTrick = message.cards.map(c => ({ suit: c.suit, rank: c.rank }));
+                this.state.currentTrickType = comboType;
+                this.state.activeConsecutiveCards = message.cards.length;
                 this.lastTrickWinnerId = client.sessionId;
-
-                // Check if player finished
-                this.checkPlayerFinished(client.sessionId, hand, message.cards);
-
-                // Same player leads again (if still in game)
-                this.setCurrentPlayer(client.sessionId);
+                this.consecutivePasses = 0;
                 this.broadcastState();
+
+                this.state.currentTurnPlayerId = ""; // lock turn during animation
+
+                this.broadcast("chat_message", {
+                    sender: "🎮 Système",
+                    text: `✂️ ${player?.username || "Un joueur"} pose un 2 et coupe le pli !`,
+                    timestamp: Date.now(),
+                });
+
+                setTimeout(() => {
+                    this.plainTrick = [];
+                    this.state.currentTrickType = "";
+                    this.state.activeConsecutiveCards = 0;
+                    this.state.isForcedRank = "";
+                    this.consecutivePasses = 0;
+                    this.lastTrickWinnerId = client.sessionId;
+
+                    this.checkPlayerFinished(client.sessionId, hand, message.cards);
+
+                    this.setCurrentPlayer(client.sessionId);
+                    this.broadcastState();
+                }, 1500);
                 return;
             }
 
