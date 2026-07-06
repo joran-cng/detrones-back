@@ -26,6 +26,10 @@ model User {
   // Friend relationships
   friends     Friend[] @relation("UserFriends")
   friendOf    Friend[] @relation("FriendUsers")
+
+  // Game invites
+  sentInvites     GameInvite[] @relation("SentInvites")
+  receivedInvites GameInvite[] @relation("ReceivedInvites")
 }
 
 model Friend {
@@ -41,6 +45,22 @@ model Friend {
   @@unique([userId, friendId])
   @@index([userId])
   @@index([friendId])
+}
+
+model GameInvite {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  roomCode   String
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  fromUser   User @relation("SentInvites", fields: [fromUserId], references: [id])
+  toUser     User @relation("ReceivedInvites", fields: [toUserId], references: [id])
+
+  @@index([toUserId, status])
+  @@index([fromUserId])
 }
 
 model Match {

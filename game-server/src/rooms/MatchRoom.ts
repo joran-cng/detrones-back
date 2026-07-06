@@ -444,6 +444,8 @@ export class MatchRoom extends Room<GameState> {
             this.state.players.forEach((p, key) => {
                 this.previousRoles.set(key, p.role);
             });
+            // Personalized role animation for each player when relaunching
+            this.sendRoleReveal((sessionId) => this.previousRoles.get(sessionId) || "NEUTRE");
         }
 
         // Make sure all spectators become active players for the new round
@@ -862,6 +864,14 @@ export class MatchRoom extends Room<GameState> {
         this.assignRoles();
     }
 
+    /** Send a personalized role-reveal event to each connected client */
+    sendRoleReveal(getRole: (sessionId: string) => string) {
+        for (const client of this.clients) {
+            const role = getRole(client.sessionId);
+            client.send("role_reveal", { role });
+        }
+    }
+
     assignRoles() {
         const playerCount = this.state.players.size;
         const ranking = [...this.plainFinished, ...this.losers.slice().reverse()];
@@ -890,6 +900,9 @@ export class MatchRoom extends Room<GameState> {
             player.role = role;
             player.score = (player.score || 0) + delta;
         });
+
+        // Personalized end-of-round role animation for each player
+        this.sendRoleReveal((sessionId) => this.state.players.get(sessionId)?.role || "NEUTRE");
 
         let summary = "🏆 **Classement de la manche** 🏆\n";
         ranking.forEach((sessionId, index) => {
