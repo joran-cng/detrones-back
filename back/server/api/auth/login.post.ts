@@ -57,6 +57,8 @@ export default defineEventHandler(async (event) => {
             id: user.id,
             email: user.email,
             username: user.username,
+            mmr: user.mmr,
+            avatarUrl: user.avatarUrl,
         },
         token,
         refreshToken

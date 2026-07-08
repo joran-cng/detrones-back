@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
     const user = getUserFromEvent(event)
     const friendId = getRouterParam(event, 'friendId') as string
 
-    // Verify they are actual friends (ACCEPTED)
+    // Determine if they are actual friends (ACCEPTED)
     const friendship = await prisma.friend.findFirst({
         where: {
             status: 'ACCEPTED',
@@ -15,9 +15,8 @@ export default defineEventHandler(async (event) => {
         }
     })
 
-    if (!friendship) {
-        throw createError({ statusCode: 403, statusMessage: 'Not friends' })
-    }
+    // (We no longer throw an error if they are not friends, because we allow
+    // viewing past conversations with former friends).
 
     // Fetch messages between the two users
     const messages = await prisma.message.findMany({

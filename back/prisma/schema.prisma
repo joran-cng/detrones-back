@@ -30,6 +30,10 @@ model User {
   // Game invites
   sentInvites     GameInvite[] @relation("SentInvites")
   receivedInvites GameInvite[] @relation("ReceivedInvites")
+
+  // Chat messages
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 model Friend {
@@ -113,4 +117,19 @@ model SeasonScore {
   User      User    @relation(fields: [userId], references: [id])
 
   @@unique([seasonId, userId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  @@index([senderId, receiverId])
+  @@index([receiverId, read])
 }

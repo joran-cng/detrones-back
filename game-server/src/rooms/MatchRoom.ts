@@ -99,6 +99,7 @@ export class MatchRoom extends Room<GameState> {
 
     broadcastState() {
         const players: any[] = [];
+        let index = 0;
         this.state.players.forEach((p, key) => {
             const hand = this.playerHands.get(key) || [];
             players.push({
@@ -110,7 +111,9 @@ export class MatchRoom extends Room<GameState> {
                 role: p.role,
                 handCount: hand.length,
                 score: p.score,
+                isHost: index === 0,
             });
+            index++;
         });
 
         const shared = {

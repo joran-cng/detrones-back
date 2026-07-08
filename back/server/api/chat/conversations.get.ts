@@ -21,10 +21,39 @@ export default defineEventHandler(async (event) => {
         }
     })
 
-    const friends = friendships.map(f => f.userId === user.userId ? f.friend : f.user)
+    const friendsMap = new Map<string, any>()
+    
+    // Add accepted friends
+    for (const f of friendships) {
+        const friend = f.userId === user.userId ? f.friend : f.user
+        friendsMap.set(friend.id, friend)
+    }
 
-    // For each friend, fetch the last message and count unread messages from them
-    const conversations = await Promise.all(friends.map(async (friend) => {
+    // Find all users we have messages with (even if not friends)
+    const messages = await prisma.message.findMany({
+        where: {
+            OR: [
+                { senderId: user.userId },
+                { receiverId: user.userId }
+            ]
+        },
+        include: {
+            sender: { select: { id: true, username: true, mmr: true, avatarUrl: true } },
+            receiver: { select: { id: true, username: true, mmr: true, avatarUrl: true } }
+        }
+    })
+
+    for (const msg of messages) {
+        const otherUser = msg.senderId === user.userId ? msg.receiver : msg.sender
+        if (!friendsMap.has(otherUser.id)) {
+            friendsMap.set(otherUser.id, otherUser)
+        }
+    }
+
+    const conversationUsers = Array.from(friendsMap.values())
+
+    // For each user, fetch the last message and count unread messages from them
+    const conversations = await Promise.all(conversationUsers.map(async (friend) => {
         const lastMessage = await prisma.message.findFirst({
             where: {
                 OR: [
