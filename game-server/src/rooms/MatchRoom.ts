@@ -4,6 +4,7 @@ import { GameState, Player, GamePhase, Card } from "./schema/GameState";
 import { Deck } from "./logic/Deck";
 import { Rules, CombinationType } from "./logic/Rules";
 import { GameConfig, buildConfig } from "./logic/GameConfig";
+import { resolveMatchEndUrl } from "../config/backUrl";
 
 export class MatchRoom extends Room<GameState> {
     maxClients = 7;
@@ -971,15 +972,7 @@ export class MatchRoom extends Room<GameState> {
             role: p.role
         }));
 
-        const defaultUrl = process.env.NODE_ENV === "production" ? "http://back:3000" : "http://localhost:3000";
-        const backUrl = process.env.BACK_URL || process.env.NUXT_PUBLIC_API_URL || defaultUrl;
-        
-        let targetUrl = "";
-        try {
-            targetUrl = new URL("/api/match/end", backUrl).toString();
-        } catch (e) {
-            targetUrl = `${backUrl}/api/match/end`.replace(/([^:])\/\//g, '$1/'); // fallback sanitize
-        }
+        const targetUrl = resolveMatchEndUrl();
 
         fetch(targetUrl, {
             method: "POST",

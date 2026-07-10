@@ -5,8 +5,11 @@ import { Server, LobbyRoom } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { monitor } from "@colyseus/monitor";
 import { MatchRoom } from "./rooms/MatchRoom";
+import { logBackUrlConfig } from "./config/backUrl";
 
 const PORT = Number(process.env.PORT || 2567);
+
+logBackUrlConfig();
 
 const app = express();
 

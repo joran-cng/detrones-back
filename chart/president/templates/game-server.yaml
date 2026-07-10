@@ -25,6 +25,8 @@ spec:
               value: {{ .Values.gameServer.nodeEnv }}
             - name: REDIS_URL
               value: "redis://{{ include "president.fullname" . }}-redis:6379"
+            - name: BACK_URL
+              value: "http://{{ include "president.fullname" . }}-back"
 ---
 apiVersion: v1
 kind: Service
