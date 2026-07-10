@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Rules } from '../rooms/logic/Rules';
 import { Card } from '../rooms/schema/GameState';
-import { GameConfig } from '../rooms/GameConfig';
+import { GameConfig } from '../rooms/logic/GameConfig';
 
 describe('Rules', () => {
     const config: GameConfig = {
@@ -26,14 +26,14 @@ describe('Rules', () => {
     });
 
     it('should determine combination types', () => {
-        const single = [new Card().assign({ suit: 'S', rank: '5' })];
+        const single = [new Card('S', '5')];
         const pair = [
-            new Card().assign({ suit: 'S', rank: '5' }),
-            new Card().assign({ suit: 'H', rank: '5' })
+            new Card('S', '5'),
+            new Card('H', '5')
         ];
         const invalid = [
-            new Card().assign({ suit: 'S', rank: '5' }),
-            new Card().assign({ suit: 'H', rank: '6' })
+            new Card('S', '5'),
+            new Card('H', '6')
         ];
 
         expect(Rules.getCombinationType(single, config)).toBe('single');
@@ -42,14 +42,14 @@ describe('Rules', () => {
     });
 
     it('should validate moves', () => {
-        const trick = [new Card().assign({ suit: 'S', rank: '5' })];
-        const higher = [new Card().assign({ suit: 'S', rank: '6' })];
-        const lower = [new Card().assign({ suit: 'S', rank: '4' })];
+        const trick = [new Card('S', '5')];
+        const higher = [new Card('S', '6')];
+        const lower = [new Card('S', '4')];
         const pair = [
-            new Card().assign({ suit: 'S', rank: '6' }),
-            new Card().assign({ suit: 'H', rank: '6' })
+            new Card('S', '6'),
+            new Card('H', '6')
         ];
-        const two = [new Card().assign({ suit: 'S', rank: '2' })];
+        const two = [new Card('S', '2')];
 
         expect(Rules.isValidMove(higher, trick, config)).toBe(true);
         expect(Rules.isValidMove(lower, trick, config)).toBe(false);
@@ -58,8 +58,8 @@ describe('Rules', () => {
     });
 
     it('should not allow 2 to cut during revolution', () => {
-        const trick = [new Card().assign({ suit: 'S', rank: '5' })];
-        const two = [new Card().assign({ suit: 'S', rank: '2' })];
+        const trick = [new Card('S', '5')];
+        const two = [new Card('S', '2')];
         // 2 has value -1 in revolution
         expect(Rules.isValidMove(two, trick, config, "", 0, true)).toBe(false);
     });
