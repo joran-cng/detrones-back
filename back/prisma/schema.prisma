@@ -21,7 +21,6 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   matches     MatchPlayer[]
-  seasonScores SeasonScore[]
 
   // Friend relationships
   friends     Friend[] @relation("UserFriends")
@@ -100,24 +99,6 @@ enum Role {
   TDC
 }
 
-model Season {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  startAt   DateTime
-  endAt     DateTime
-  scores    SeasonScore[]
-}
-
-model SeasonScore {
-  id        String  @id @default(cuid())
-  seasonId  String
-  userId    String
-  score     Int     @default(0)
-  Season    Season  @relation(fields: [seasonId], references: [id])
-  User      User    @relation(fields: [userId], references: [id])
-
-  @@unique([seasonId, userId])
-}
 
 model Message {
   id         String   @id @default(cuid())

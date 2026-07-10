@@ -30,6 +30,7 @@ export class Player extends Schema {
     @type([Card]) hand = new ArraySchema<Card>();
     @type("boolean") isSpectator: boolean = false;
     @type("number") score: number = 0;
+    @type("number") seatIndex: number = 0;
 
     constructor(id: string, username: string) {
         super();
@@ -55,7 +56,7 @@ export class GameState extends Schema {
     // Multi-manche
     @type("number") roundNumber: number = 0;
 
-    // Type du pli courant (single, pair, triple, quad, sequence)
+    // Type du pli courant (single, pair, triple, quad)
     @type("string") currentTrickType: string = "";
 
     // Track identical cards played to force next player / close trick

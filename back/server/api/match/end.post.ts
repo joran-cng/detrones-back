@@ -21,9 +21,14 @@ export default defineEventHandler(async (event) => {
         // Don't update bots
         if (player.username.startsWith('🤖')) continue
             
+        const updateData: any = { mmr: { increment: delta } }
+        if (player.role === 'PRESIDENT') {
+            updateData.wins = { increment: 1 }
+        }
+
         await prisma.user.updateMany({
             where: { username: player.username },
-            data: { mmr: { increment: delta } }
+            data: updateData
         })
     }
 

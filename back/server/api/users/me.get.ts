@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
             username: true,
             email: true,
             mmr: true,
+            wins: true,
             avatarUrl: true,
             createdAt: true,
         },

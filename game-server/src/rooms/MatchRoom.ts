@@ -179,7 +179,7 @@ export class MatchRoom extends Room<GameState> {
 
         // ─── start_game ──────────────────────────────────────────────
         this.onMessage("start_game", (client) => {
-            const firstKey = this.state.players.keys().next().value;
+            const firstKey = this.getOrderedKeys()[0];
             if (client.sessionId !== firstKey) return;
 
             const playerCount = this.state.players.size;
@@ -248,8 +248,8 @@ export class MatchRoom extends Room<GameState> {
 
             const comboType = Rules.getCombinationType(playedCards, this.config);
 
-            // ── Special 2: burns the trick ──
-            if (playedCards.every(c => c.rank === "2")) {
+            // ── Special 2: burns the trick (Sauf en révolution) ──
+            if (!this.state.isRevolution && playedCards.every(c => c.rank === "2")) {
                 // Show the card(s) on the table before clearing the trick
                 this.plainTrick = message.cards.map(c => ({ suit: c.suit, rank: c.rank }));
                 this.state.currentTrickType = comboType;
@@ -438,6 +438,23 @@ export class MatchRoom extends Room<GameState> {
         });
 
         // ─── chat ────────────────────────────────────────────────────
+        this.onMessage("kick_player", (client, { targetSessionId }) => {
+            const firstKey = this.getOrderedKeys()[0];
+            if (client.sessionId !== firstKey) return;
+            const player = this.state.players.get(targetSessionId);
+            if (!player) return;
+            this.state.players.delete(targetSessionId);
+            this.playerHands.delete(targetSessionId);
+            this.playerAvatars.delete(targetSessionId);
+            this.broadcast("chat_message", {
+                sender: "🎮 Système",
+                text: `${player.username} a été expulsé.`,
+                timestamp: Date.now(),
+            });
+            this.updateLobbyMetadata();
+            this.broadcastState();
+        });
+
         this.onMessage("chat_message", (client, message: { text: string }) => {
             const player = this.state.players.get(client.sessionId);
             if (!player) return;
@@ -475,7 +492,10 @@ export class MatchRoom extends Room<GameState> {
         // Deal cards
         const deck = new Deck();
         deck.shuffle();
-        const playerIds = Array.from(this.state.players.keys());
+        this.plainFinished = [];
+        this.losers = [];
+
+        const playerIds = this.getOrderedKeys();
         const hands = deck.deal(playerIds.length);
 
         playerIds.forEach((sessionId, i) => {
@@ -488,8 +508,6 @@ export class MatchRoom extends Room<GameState> {
 
         // Reset state
         this.plainTrick = [];
-        this.plainFinished = [];
-        this.losers = [];
         this.consecutivePasses = 0;
         this.state.currentTrickType = "";
         this.state.activeConsecutiveCards = 0;
@@ -507,10 +525,15 @@ export class MatchRoom extends Room<GameState> {
         }
 
         // Find starting player
-        const starterSessionId = Rules.findStartingPlayer(
+        let starterSessionId = Rules.findStartingPlayer(
             this.playerHands,
             this.config
         );
+        
+        const tdcId = this.findPlayerByRole("TDC");
+        if (tdcId) {
+            starterSessionId = tdcId;
+        }
 
         this.state.currentTurnPlayerId = starterSessionId;
         this.state.phase = GamePhase.PLAY;
@@ -709,10 +732,15 @@ export class MatchRoom extends Room<GameState> {
         });
 
         // Find starting player
-        const starterSessionId = Rules.findStartingPlayer(
+        let starterSessionId = Rules.findStartingPlayer(
             this.playerHands,
             this.config
         );
+        
+        const tdcId = this.findPlayerByRole("TDC");
+        if (tdcId) {
+            starterSessionId = tdcId;
+        }
 
         this.state.currentTurnPlayerId = starterSessionId;
         this.state.phase = GamePhase.PLAY;
@@ -745,8 +773,7 @@ export class MatchRoom extends Room<GameState> {
             this.state.isForcedRank = "";
         }
 
-        const activePlayers = Array.from(this.state.players.keys())
-            .filter(id => !this.isPlayerFinished(id));
+        const activePlayers = this.getOrderedKeys().filter(id => !this.isPlayerFinished(id));
 
         // ── Trick cleared: everyone passed except last player ──
         if (this.consecutivePasses >= activePlayers.length - 1 && this.plainTrick.length > 0) {
@@ -772,7 +799,7 @@ export class MatchRoom extends Room<GameState> {
         }
 
         // ── Next active player ──
-        const allKeys = Array.from(this.state.players.keys());
+        const allKeys = this.getOrderedKeys();
         let currentIndex = allKeys.indexOf(this.state.currentTurnPlayerId);
         let nextIndex = (currentIndex + 1) % allKeys.length;
         let attempts = 0;
@@ -792,7 +819,7 @@ export class MatchRoom extends Room<GameState> {
     setCurrentPlayer(sessionId: string) {
         if (this.isPlayerFinished(sessionId)) {
             // This player has already finished; find the next active one
-            const allKeys = Array.from(this.state.players.keys());
+            const allKeys = this.getOrderedKeys();
             let idx = allKeys.indexOf(sessionId);
             let attempts = 0;
             do {
@@ -944,7 +971,7 @@ export class MatchRoom extends Room<GameState> {
             role: p.role
         }));
 
-        const backUrl = process.env.BACK_URL || "http://localhost:3000";
+        const backUrl = process.env.BACK_URL || process.env.NUXT_PUBLIC_API_URL || "http://localhost:3000";
         fetch(`${backUrl}/api/match/end`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -962,6 +989,12 @@ export class MatchRoom extends Room<GameState> {
      *  UTILITY
      * ================================================================ */
 
+    getOrderedKeys(): string[] {
+        return Array.from(this.state.players.entries())
+            .sort((a, b) => a[1].seatIndex - b[1].seatIndex)
+            .map(e => e[0]);
+    }
+
     resortAllHands() {
         this.playerHands.forEach((hand, sessionId) => {
             Rules.sortHand(hand, this.state.isRevolution);
@@ -970,14 +1003,13 @@ export class MatchRoom extends Room<GameState> {
 
     updateLobbyMetadata() {
         const playerList: any[] = [];
-        let index = 0;
-        this.state.players.forEach((p, key) => {
+        this.getOrderedKeys().forEach((key) => {
+            const p = this.state.players.get(key)!;
             playerList.push({
                 username: p.username,
                 avatarUrl: this.playerAvatars.get(key) || "",
-                isHost: index === 0,
+                isHost: p.seatIndex === 0,
             });
-            index++;
         });
 
         this.setMetadata({
@@ -1032,6 +1064,7 @@ export class MatchRoom extends Room<GameState> {
             newPlayer.role = oldPlayer.role;
             newPlayer.avatarUrl = options.avatarUrl || oldPlayer.avatarUrl || "";
             newPlayer.score = oldPlayer.score || 0;
+            newPlayer.seatIndex = oldPlayer.seatIndex || 0;
             
             this.state.players.delete(existingSessionId);
             this.state.players.set(client.sessionId, newPlayer);
@@ -1070,6 +1103,7 @@ export class MatchRoom extends Room<GameState> {
         if (this.state.phase !== GamePhase.LOBBY) {
             player.isSpectator = true;
         }
+        player.seatIndex = this.state.players.size;
         this.state.players.set(client.sessionId, player);
 
         this.playerAvatars.set(client.sessionId, options.avatarUrl || "");

@@ -10,7 +10,7 @@ export interface GameConfig {
 
     /* ── Règles de base ──────────────────────────────────── */
     /** Séquences (suites) activées */
-    enableSequences: boolean;
+
 
     /** Le 2 peut couper / brûler le pli */
 
@@ -44,7 +44,7 @@ export interface GameConfig {
 export const DEFAULT_CONFIG: GameConfig = {
     minPlayers: 3,
     maxPlayers: 7,
-    enableSequences: false,
+
 
     enableRevolution: true,
     revolutionResetsTrick: true,

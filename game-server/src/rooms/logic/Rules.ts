@@ -11,7 +11,7 @@ const SUIT_ORDER = ["C", "D", "H", "S"];
 
 /* ── Types de combinaison ───────────────────────────────────── */
 
-export type CombinationType = "single" | "pair" | "triple" | "quad" | "sequence" | "invalid";
+export type CombinationType = "single" | "pair" | "triple" | "quad" | "invalid";
 
 /* ── Classe Rules ───────────────────────────────────────────── */
 
@@ -56,32 +56,7 @@ export class Rules {
             }
         }
 
-        // Vérifier si c'est une séquence (si activée)
-        if (config.enableSequences && cards.length >= 3) {
-            if (this.isSequence(cards)) return "sequence";
-        }
-
         return "invalid";
-    }
-
-    /**
-     * Vérifie si les cartes forment une séquence (suite) valide.
-     */
-    static isSequence(cards: Card[], isRevolution: boolean = false): boolean {
-        if (cards.length < 3) return false;
-
-        const values = cards.map(c => this.getCardValue(c.rank, isRevolution)).sort((a, b) => a - b);
-
-        // Vérifier que les valeurs sont consécutives
-        for (let i = 1; i < values.length; i++) {
-            if (values[i] !== values[i - 1] + 1) return false;
-        }
-
-        // Vérifier pas de doublons
-        const uniqueRanks = new Set(cards.map(c => c.rank));
-        if (uniqueRanks.size !== cards.length) return false;
-
-        return true;
     }
 
     /**
@@ -100,8 +75,8 @@ export class Rules {
         const playedType = this.getCombinationType(playedCards, config);
         if (playedType === "invalid") return false;
 
-        // ── 2 spécial : coupe le pli ──
-        if (playedCards.every(c => c.rank === "2")) {
+        // ── 2 spécial : coupe le pli (sauf en révolution) ──
+        if (!isRevolution && playedCards.every(c => c.rank === "2")) {
             // Un ou plusieurs 2 peuvent couper, mais ils doivent respecter le nombre de cartes du pli (sauf si vide)
             if (currentTrick.length > 0 && playedCards.length !== currentTrick.length) {
                 return false;
@@ -128,7 +103,7 @@ export class Rules {
         }
 
         // ── Règle du joueur forcé ("ou rien") ──
-        if (isForcedRank && playedType !== "sequence") {
+        if (isForcedRank) {
             // Toutes les cartes jouées doivent être du rang forcé
             if (!playedCards.every(c => c.rank === isForcedRank)) {
                 return false;
@@ -145,17 +120,10 @@ export class Rules {
         if (playedCards.length !== currentTrick.length) return false;
 
         // ── Valeur supérieure ou égale requise ──
-        if (playedType === "sequence") {
-            // Pour une séquence, comparer la plus haute carte
-            const playedMax = Math.max(...playedCards.map(c => this.getCardValue(c.rank, isRevolution)));
-            const trickMax = Math.max(...currentTrick.map(c => this.getCardValue(c.rank, isRevolution)));
-            return playedMax >= trickMax;
-        } else {
-            // Pour single / pair / triple / quad : comparer le rang
-            const playedValue = this.getCardValue(playedCards[0].rank, isRevolution);
-            const trickValue = this.getCardValue(currentTrick[0].rank, isRevolution);
-            return playedValue >= trickValue;
-        }
+        // Pour single / pair / triple / quad : comparer le rang
+        const playedValue = this.getCardValue(playedCards[0].rank, isRevolution);
+        const trickValue = this.getCardValue(currentTrick[0].rank, isRevolution);
+        return playedValue >= trickValue;
     }
 
     /**
