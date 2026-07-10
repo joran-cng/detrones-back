@@ -971,15 +971,33 @@ export class MatchRoom extends Room<GameState> {
             role: p.role
         }));
 
-        const backUrl = process.env.BACK_URL || process.env.NUXT_PUBLIC_API_URL || "http://localhost:3000";
-        fetch(`${backUrl}/api/match/end`, {
+        const defaultUrl = process.env.NODE_ENV === "production" ? "http://back:3000" : "http://localhost:3000";
+        const backUrl = process.env.BACK_URL || process.env.NUXT_PUBLIC_API_URL || defaultUrl;
+        
+        let targetUrl = "";
+        try {
+            targetUrl = new URL("/api/match/end", backUrl).toString();
+        } catch (e) {
+            targetUrl = `${backUrl}/api/match/end`.replace(/([^:])\/\//g, '$1/'); // fallback sanitize
+        }
+
+        fetch(targetUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "User-Agent": "President-Game-Server/1.0",
+                "Accept": "application/json"
+            },
             body: JSON.stringify({ players: playersData })
-        }).then(res => {
-            console.log("[MMR] update response:", res.status);
+        }).then(async res => {
+            if (!res.ok) {
+                const text = await res.text().catch(() => "no-body");
+                console.error("[MMR] failed. Status:", res.status, "Body:", text, "URL:", targetUrl);
+            } else {
+                console.log("[MMR] update response:", res.status);
+            }
         }).catch(err => {
-            console.error("[MMR] failed to update:", err);
+            console.error("[MMR] fetch error:", err, "URL:", targetUrl);
         });
 
         this.broadcastState();
